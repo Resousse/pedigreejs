@@ -202,6 +202,9 @@ export function addWidgets(opts, node) {
 					// Do not create partner if already has several partners
 					if (d.data.parent_node !== undefined && d.data.parent_node.length > 1)
 						return false;
+					// Do not create partners for unknown sex people
+					else if (d.data.sex == 'U')
+						return false;
 					// Do not create partner of someone with no family link
 					else if (d.data.top_level !== true && (d.data.noparents === true || mother === undefined || father === undefined))
 						return false;
@@ -705,7 +708,7 @@ export function addpartner(opts, dataset, name) {
 	let flat_tree = utils.flatten(root);
 	let tree_node = utils.getNodeByName(flat_tree, name);
 
-	let partner = addsibling(dataset, tree_node.data, tree_node.data.sex === 'F' ? 'M' : 'F', tree_node.data.sex === 'F');
+	let partner = addsibling(dataset, tree_node.data, tree_node.data.sex === 'F' ? 'M' : 'F', tree_node.data.sex === 'F' ^ (tree_node.data.parent_node && tree_node.data.parent_node.length >0) );
 	partner.noparents = true;
 
 	let child = {"name": utils.makeid(4), "sex": "M"};
