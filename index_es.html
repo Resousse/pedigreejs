@@ -145,7 +145,7 @@
 
 	import * as pedigree from './es/pedigree.js';
 	import * as pedcache from './es/pedcache.js';
-	import {urlParam, isIE} from './es/utils.js';
+	import {urlParam, isIE, getIdxByName, makeid} from './es/utils.js';
 	import * as canrisk_file from './es/canrisk_file.js';
 
 	$( document ).ready(function() {
@@ -169,10 +169,27 @@
 				'width': ($(window).width() > 450 ? 1000 : $(window).width()- 30),
 				'height': 580,
 				'symbol_size': 30,
-				'edit': true,
+				'edit': function (opts, person){
+					console.log(person);
+				},
 				'zoomSrc': ['button'],
 				'zoomIn': .05,
 				'zoomOut': 1.5,
+				'removePersonCallback': null,
+				'linkPartnersCallback': function (partner1, partner2, rebuildCallback, dataset){
+					window.alert("Linking "+partner1.name+" and "+partner2.name);
+					let child = {"name": makeid(4), "sex": 'U',
+							"mother": (partner1.sex === 'F' ? partner1.name : partner2.name),
+							"father": (partner1.sex === 'F' ? partner2.name : partner1.name)};
+					
+					let idx = getIdxByName(dataset, partner1.name)+1;
+					dataset.splice(idx, 0, child);
+					rebuildCallback(dataset);
+					return false;},
+				'addRelativeCallback': function (person, relationship, subtype, rebuildCallback, dataset){
+					console.log("Trying to add "+relationship+" ("+subtype+") to "+person.name);
+					rebuildCallback(dataset);
+					return false;},
 				'optionalLabels': [
 					['brca1_gene_test', 'brca2_gene_test', 'palb2_gene_test', 'chek2_gene_test', 'atm_gene_test'],
 					['rad51d_gene_test', 'rad51c_gene_test', 'brip1_gene_test'],

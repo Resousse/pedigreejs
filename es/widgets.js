@@ -225,6 +225,12 @@ export function addWidgets(opts, node) {
 					else if (father && father.parent_node && father.parent_node.length > 1)
 						return false;
 				}
+				else if (key == 'delete')
+				{
+					// Do not display delete button if removePersonCallback is null
+					if (opts.removePersonCallback === null)
+						return false;
+				}
 				return true;
 			})
 			.append("text")
@@ -280,18 +286,29 @@ export function addWidgets(opts, node) {
 				openEditDialog(opts, d);
 			}
 		} else if(opt === 'delete') {
-			newdataset = utils.copy_dataset(pedcache_current(opts));
-			delete_node_dataset(newdataset, d.data, opts, onDone);
+			let toContinue = true;
+			if (opts.removePersonCallback !== null)
+				toContinue = opts.removePersonCallback(d.data);
+			if (toContinue) {
+				newdataset = utils.copy_dataset(pedcache_current(opts));
+				delete_node_dataset(newdataset, d.data, opts, onDone);
+			}
 		} else if(opt === 'addparents') {
 			newdataset = utils.copy_dataset(pedcache_current(opts));
 			opts.dataset = newdataset;
-			addparents(opts, newdataset, d.data.name);
-			$(document).trigger('rebuild', [opts]);
+			let toContinue = opts.addRelativeCallback(d.data, "parents", null , (dataset) => {opts.dataset = dataset; $(document).trigger('rebuild', [opts]);}, opts.dataset);
+			if (toContinue){
+				addparents(opts, newdataset, d.data.name);
+				$(document).trigger('rebuild', [opts]);
+			}
 		} else if(opt === 'addpartner') {
 			newdataset = utils.copy_dataset(pedcache_current(opts));
-			addpartner(opts, newdataset, d.data.name);
 			opts.dataset = newdataset;
-			$(document).trigger('rebuild', [opts]);
+			let toContinue = opts.addRelativeCallback(d.data, "partner", null , (dataset) => {opts.dataset = dataset; $(document).trigger('rebuild', [opts]);}, opts.dataset);
+			if (toContinue){
+				addpartner(opts, newdataset, d.data.name);
+				$(document).trigger('rebuild', [opts]);
+		}
 		}
 		// trigger fhChange event
 		$(document).trigger('fhChange', [opts]);
@@ -387,18 +404,22 @@ function drag_handle(opts) {
 		if ((dragging && dragging.data && dragging.data.sex == 'U') || (last_mouseover && last_mouseover.data && last_mouseover.data.sex == "U"))
 			utils.messages("Warning", "Unable to create partner from/to someone with unknown sex");
 		else if(last_mouseover &&
-		   dragging.data.name !== last_mouseover.data.name &&
-		   dragging.data.sex  !== last_mouseover.data.sex) {
-			// make partners
-			let child = {"name": utils.makeid(4), "sex": 'U',
-				     "mother": (dragging.data.sex === 'F' ? dragging.data.name : last_mouseover.data.name),
-			         "father": (dragging.data.sex === 'F' ? last_mouseover.data.name : dragging.data.name)};
+			dragging.data.name !== last_mouseover.data.name &&
+			dragging.data.sex  !== last_mouseover.data.sex) {
 			let newdataset = utils.copy_dataset(opts.dataset);
 			opts.dataset = newdataset;
-
-			let idx = utils.getIdxByName(opts.dataset, dragging.data.name)+1;
-			opts.dataset.splice(idx, 0, child);
-			$(document).trigger('rebuild', [opts]);
+			let toContinue = opts.linkPartnersCallback(dragging.data, last_mouseover.data, (dataset) => {opts.dataset = dataset; $(document).trigger('rebuild', [opts]);}, opts.dataset);
+			if (toContinue)
+				{
+					// make partners
+					let child = {"name": utils.makeid(4), "sex": 'U',
+							"mother": (dragging.data.sex === 'F' ? dragging.data.name : last_mouseover.data.name),
+							"father": (dragging.data.sex === 'F' ? last_mouseover.data.name : dragging.data.name)};
+					
+					let idx = utils.getIdxByName(opts.dataset, dragging.data.name)+1;
+					opts.dataset.splice(idx, 0, child);
+					$(document).trigger('rebuild', [opts]);
+				}
 		}
 		setLineDragPosition(0, 0, 0, 0);
 		d3.selectAll('.line_drag_selection')
